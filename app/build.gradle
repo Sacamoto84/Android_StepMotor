@@ -20,11 +20,11 @@ android {
         }
     }
 
-    namespace 'com.example.stepmotorw'
+    namespace 'com.example.stepmotor'
     compileSdk 33
 
     defaultConfig {
-        applicationId "com.example.stepmotorw"
+        applicationId "com.example.stepmotor"
         minSdk 22
         targetSdk 33
         versionCode 1
