@@ -1,19 +1,14 @@
 package com.example.stepmotor.screen.home
 
-import android.widget.Spinner
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material.Button
 import androidx.compose.material.Text
 import androidx.compose.material3.Slider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.tooling.preview.Preview
 import com.example.stepmotor.bt
 import com.example.stepmotor.counterInput
-import com.example.stepmotor.send
 import com.example.stepmotor.settingAcceleration
 import com.example.stepmotor.settingMaxSpeed
 import com.example.stepmotor.settingMicrostep
@@ -45,26 +40,26 @@ fun Home()
        Text(text = "${bt.btStatus.collectAsState().value}")
        Text(text = "${counterInput.collectAsState().value}")
 
-       Text(text = "Шагов на оборот ${settingSteps}")
-       Text(text = "Микрошаг ${settingMicrostep}")
+       Text(text = "Шагов на оборот ${settingSteps.collectAsState().value}")
+       Text(text = "Микрошаг ${settingMicrostep.collectAsState().value}")
 
-       Text(text = "Максимальная скорость ${settingMaxSpeed}")
-       Text(text = "Ускорение ${settingAcceleration}")
-       Text(text = "Позиция ${settingTarget}")
-       Text(text = "Мотор достиг позиции ${settingReady}")
+       Text(text = "Максимальная скорость ${settingMaxSpeed.collectAsState().value}")
+       Text(text = "Ускорение ${settingAcceleration.collectAsState().value}")
+       Text(text = "Позиция ${settingTarget.collectAsState().value}")
+       Text(text = "Мотор достиг позиции ${settingReady.collectAsState().value}")
 
 
-       Text(text = "Ток ${settingMiliAmper} mA")
+       Text(text = "Ток ${settingMiliAmper.collectAsState().value} mA")
        Slider(
            steps = 19,
            valueRange = 0F..2000F,
-           value = settingMiliAmper.toFloat(),
+           value = settingMiliAmper.collectAsState().value.toFloat(),
            onValueChange = {
-               settingMiliAmper = it.toInt()
+               settingMiliAmper.value = it.toInt()
            },
            onValueChangeFinished =
            {
-               shadowList[0].outValue = settingMiliAmper
+               shadowList[0].outValue = settingMiliAmper.value
                shadowList[0].newOutputData = true
            }
        )
@@ -73,17 +68,17 @@ fun Home()
 
        Button(onClick = {
 
-           if (settingMotorOnOff == 1)
-               settingMotorOnOff = 0
+           if (settingMotorOnOff.value == 1)
+               settingMotorOnOff.value = 0
            else
-               settingMotorOnOff = 1
+               settingMotorOnOff.value = 1
 
-           shadowList[3].outValue = settingMotorOnOff
+           shadowList[3].outValue = settingMotorOnOff.value
            shadowList[3].newOutputData = true
 
        }) {
 
-           Text(text = "Мотор ONOFF $settingMotorOnOff")
+           Text(text = "Мотор ONOFF ${settingMotorOnOff.collectAsState().value}")
 
        }
 
