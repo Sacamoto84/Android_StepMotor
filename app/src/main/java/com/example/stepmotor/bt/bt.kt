@@ -16,6 +16,7 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
@@ -27,9 +28,18 @@ import java.io.InputStream
 import java.io.OutputStream
 import java.util.UUID
 
+/**
+ * Использование
+ *
+ * ```kotlin
+ *  BT.init(context)
+ *  BT.getPairedDevices()
+ *  BT.autoconnect()
+ * ```
+ */
 
 
-class bt {
+class BT {
 
     lateinit var bluetoothManager: BluetoothManager
     lateinit var bluetoothAdapter: BluetoothAdapter
@@ -38,7 +48,7 @@ class bt {
         DISCONNECT, CONNECTING, CONNECTED, RECEIVE
     }
 
-    var btStatus = BTstatus.DISCONNECT
+    var btStatus by mutableStateOf(BTstatus.DISCONNECT)
 
     var btIsConnected by mutableStateOf(false)
 
@@ -50,12 +60,11 @@ class bt {
     private val uuid: String = "00001101-0000-1000-8000-00805F9B34FB"
 
 
-    fun init(context: Context)
-    {
+    fun init(context: Context) {
         bluetoothManager = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             context.getSystemService(BluetoothManager::class.java)
         } else {
-            ContextCompat.getSystemService( context, BluetoothManager::class.java)!!
+            ContextCompat.getSystemService(context, BluetoothManager::class.java)!!
         }
         bluetoothAdapter = bluetoothManager.adapter
     }
@@ -69,18 +78,16 @@ class bt {
         val pairedDevices: Set<BluetoothDevice> = bluetoothAdapter.bondedDevices
 
         pairedDevices.forEach {
-            println(it.name)
-            println(it.address)
+            Timber.i(it.name)
+            Timber.i(it.address)
             it.uuids.forEach { u ->
-                println(u.toString())
+                Timber.i(u.toString())
             }
         }
 
         try {
             stm32device = pairedDevices.first { it.name == "Generator" }
-        }
-        catch (e : NoSuchElementException)
-        {
+        } catch (e: NoSuchElementException) {
             Timber.e("Блютус устройство 'Generator' не найдено")
         }
 
@@ -88,8 +95,7 @@ class bt {
 
     private fun connect(context: Context) {
 
-        if (bluetoothAdapter.isEnabled and (stm32device != null))
-        {
+        if (bluetoothAdapter.isEnabled and (stm32device != null)) {
             btStatus = BTstatus.CONNECTING
             val device = stm32device //bluetoothAdapter.getRemoteDevice(mac)
             connectScope(context, device!!)
@@ -112,29 +118,35 @@ class bt {
     fun connectScope(context: Context, device: BluetoothDevice) {
         GlobalScope.launch(Dispatchers.IO) {
 
-            if (ActivityCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT ) == PackageManager.PERMISSION_GRANTED ) {
+//            if (ActivityCompat.checkSelfPermission(
+//                    context,
+//                    Manifest.permission.BLUETOOTH_CONNECT
+//                ) == PackageManager.PERMISSION_GRANTED
+//            )
+//            {
 
-                try {
-                    mSocket = device.createRfcommSocketToServiceRecord(UUID.fromString(uuid))
-                    Timber.i("Подключение...")
-                    mSocket?.connect()
-                    Timber.i("Подключились к устройству")
-                    btIsConnected = true
-                    btStatus = BTstatus.CONNECTED
-                    receiveScope()
-                } catch (e: IOException) {
-                    btIsConnected = false
-                    mSocket?.close()
-                    Timber.e("Не смогли подключиться к устройсву ${e.message}")
-                    btStatus = BTstatus.DISCONNECT
-                }
+            try {
+                mSocket = device.createRfcommSocketToServiceRecord(UUID.fromString(uuid))
+                Timber.i("Подключение...")
+                mSocket?.connect()
+                Timber.i("Подключились к устройству")
+                btIsConnected = true
+                btStatus = BTstatus.CONNECTED
+                sendReceiveScope()
+            } catch (e: IOException) {
+                btIsConnected = false
+                mSocket?.close()
+                Timber.e("Не смогли подключиться к устройсву ${e.message}")
+                btStatus = BTstatus.DISCONNECT
             }
+
+//            }
 
         }
     }
 
-    @OptIn(DelicateCoroutinesApi::class)
-    fun receiveScope() {
+    @OptIn(DelicateCoroutinesApi::class, ExperimentalCoroutinesApi::class)
+    fun sendReceiveScope() {
         btStatus = BTstatus.RECEIVE
         var inStream: InputStream? = null
         var outStream: OutputStream? = null
@@ -150,12 +162,20 @@ class bt {
 
         var isExit = false
 
+
         GlobalScope.launch(Dispatchers.IO) {
 
             while (true) {
                 try {
-                    delay(1000)
-                    outStream?.write(1)
+
+                    if (channelNetworkOut.isEmpty) {
+                        delay(1000)
+                        outStream?.write(createMessage("ping").toByteArray())
+                    } else {
+                        val data = channelNetworkOut.receive()
+                        outStream?.write(createMessage(data).toByteArray())
+                    }
+
                 } catch (e: IOException) {
                     isExit = true
                     break
@@ -197,13 +217,12 @@ class bt {
 
     }
 
-    fun sendMessage(byteArray: ByteArray) {
-    try {
-        mSocket?.outputStream?.write(byteArray)
-    } catch (i: IOException) {
 
+    private fun createMessage(str: String): String {
+        val crc = CRC8(str)
+        val s = "!${str};${crc}$"
+        return s
     }
-}
 
 }
 
