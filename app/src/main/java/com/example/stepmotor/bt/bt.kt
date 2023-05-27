@@ -20,7 +20,9 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.io.IOException
@@ -45,12 +47,12 @@ class BT {
     lateinit var bluetoothAdapter: BluetoothAdapter
 
     enum class BTstatus {
-        DISCONNECT, CONNECTING, CONNECTED, RECEIVE
+        DISCONNECT, CONNECTING, CONNECTED
     }
 
-    var btStatus by mutableStateOf(BTstatus.DISCONNECT)
+    //var btStatus by mutableStateOf(BTstatus.DISCONNECT)
 
-    var btIsConnected by mutableStateOf(false)
+    var btStatus = MutableStateFlow(BTstatus.DISCONNECT)
 
     var btIsReady by mutableStateOf(false)
 
@@ -96,7 +98,7 @@ class BT {
     private fun connect(context: Context) {
 
         if (bluetoothAdapter.isEnabled and (stm32device != null)) {
-            btStatus = BTstatus.CONNECTING
+            btStatus.value = BTstatus.CONNECTING
             val device = stm32device //bluetoothAdapter.getRemoteDevice(mac)
             connectScope(context, device!!)
         }
@@ -107,9 +109,11 @@ class BT {
         GlobalScope.launch(Dispatchers.IO) {
             while (true) {
                 delay(1000)
-                if (btStatus == BTstatus.DISCONNECT) {
+
+                if (btStatus.value == BTstatus.DISCONNECT) {
                     connect(context)
                 }
+
             }
         }
     }
@@ -130,14 +134,12 @@ class BT {
                 Timber.i("Подключение...")
                 mSocket?.connect()
                 Timber.i("Подключились к устройству")
-                btIsConnected = true
-                btStatus = BTstatus.CONNECTED
+                btStatus.value = BTstatus.CONNECTED
                 sendReceiveScope()
             } catch (e: IOException) {
-                btIsConnected = false
                 mSocket?.close()
                 Timber.e("Не смогли подключиться к устройсву ${e.message}")
-                btStatus = BTstatus.DISCONNECT
+                btStatus.value = BTstatus.DISCONNECT
             }
 
 //            }
@@ -147,7 +149,9 @@ class BT {
 
     @OptIn(DelicateCoroutinesApi::class, ExperimentalCoroutinesApi::class)
     fun sendReceiveScope() {
-        btStatus = BTstatus.RECEIVE
+
+        //btStatus = BTstatus.RECEIVE
+
         var inStream: InputStream? = null
         var outStream: OutputStream? = null
 
@@ -162,27 +166,74 @@ class BT {
 
         var isExit = false
 
+        //val mutex = Mutex()
 
+
+        //Пинг
         GlobalScope.launch(Dispatchers.IO) {
 
             while (true) {
                 try {
-
                     if (channelNetworkOut.isEmpty) {
                         delay(1000)
+                        //mutex.lock()
                         outStream?.write(createMessage("ping").toByteArray())
-                    } else {
-                        val data = channelNetworkOut.receive()
-                        outStream?.write(createMessage(data).toByteArray())
                     }
-
                 } catch (e: IOException) {
                     isExit = true
+
+//                    try {
+//                        mutex.unlock()
+//                    } catch (e: Exception) {
+//                        Timber.e(e.localizedMessage)
+//                    }
+
                     break
                 }
+                //                finally {
+//
+//                    try {
+//                        mutex.unlock()
+//                    } catch (e: Exception) {
+//                        Timber.e(e.localizedMessage)
+//                    }
+//
+//                }
             }
 
         }
+
+        //Отправка команд
+        GlobalScope.launch(Dispatchers.IO) {
+
+            while (true) {
+
+                try {
+                    val data = channelNetworkOut.receive()
+                    //mutex.lock()
+                    outStream?.write(createMessage(data).toByteArray())
+                } catch (e: IOException) {
+                    isExit = true
+//                    try {
+//                        mutex.unlock()
+//                    } catch (e: Exception) {
+//                        Timber.e(e.localizedMessage)
+//                    }
+                    break
+                }
+                //finally {
+//                    try {
+//                        mutex.unlock()
+//                    } catch (e: Exception) {
+//                        Timber.e(e.localizedMessage)
+//                    }
+                //}
+            }
+
+        }
+
+
+
 
         GlobalScope.launch(Dispatchers.IO) {
 
@@ -204,15 +255,13 @@ class BT {
 
                 } catch (e: IOException) {
                     Timber.e("Ошибка в приемном потоке ${e.message}")
-                    withContext(Dispatchers.Main)
-                    {
-                        btIsConnected = false
-                        mSocket?.close()
-                    }
+                    mSocket?.close()
                     break  //При отключении подключения
                 }
             }
-            btStatus = BTstatus.DISCONNECT
+
+            btStatus.value = BTstatus.DISCONNECT
+
         }
 
     }

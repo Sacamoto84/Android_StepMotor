@@ -24,6 +24,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import com.example.stepmotor.screen.home.Home
 import com.example.stepmotor.ui.theme.StepMotorwTheme
 import com.google.accompanist.navigation.animation.AnimatedNavHost
 import com.google.accompanist.navigation.animation.composable
@@ -81,7 +82,7 @@ class MainActivity : ComponentActivity() {
                             modifier = Modifier.fillMaxSize(),
                             color = MaterialTheme.colorScheme.background
                         ) {
-                            //BuildNavGraph(navController)
+                            BuildNavGraph()
                         }
 
                     } else {
@@ -149,7 +150,7 @@ fun BuildNavGraph() {
             enterTransition = { fadeIn(animationSpec = tween(0)) },
             exitTransition = { fadeOut(animationSpec = tween(0)) }
         ) {
-            //ScreenLazy(navController)
+            Home()
         }
 
 //        composable("info",
