@@ -7,7 +7,7 @@ import androidx.compose.material3.Slider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.tooling.preview.Preview
-import com.example.stepmotor.bt
+import com.example.stepmotor.bt.bt
 import com.example.stepmotor.counterInput
 import com.example.stepmotor.settingAcceleration
 import com.example.stepmotor.settingMaxSpeed

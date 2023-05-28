@@ -12,19 +12,19 @@ MaxLen: 15 байт(127 бит) - обнаружение
 */
 fun CRC8(str: String): UByte {
 
-    var _crc: UByte = 0xFFu.toUByte()
+    var crc: UByte = 0xFFu.toUByte()
     var i: Int
 
     for (j in str.indices) {
-        _crc = _crc xor str[j].code.toUByte()
+        crc = crc xor str[j].code.toUByte()
 
         for (k in 0 until 8) {
-            _crc = if (_crc and 0x80u.toUByte() != 0u.toUByte()) {
-                (_crc.toUInt() shl 1 xor 0x31u.toUInt()).toUByte()
+            crc = if (crc and 0x80u.toUByte() != 0u.toUByte()) {
+                (crc.toUInt() shl 1 xor 0x31u.toUInt()).toUByte()
             } else {
-                _crc.toUInt().shl(1).toUByte()
+                crc.toUInt().shl(1).toUByte()
             }
         }
     }
-    return _crc
+    return crc
 }

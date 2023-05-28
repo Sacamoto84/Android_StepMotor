@@ -7,4 +7,3 @@ import com.example.stepmotor.bt.BT
  */
 var isInitialized = false
 
-var bt = BT()

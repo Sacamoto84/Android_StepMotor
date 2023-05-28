@@ -10,5 +10,5 @@ val channelNetworkOut = Channel<String>(Channel.UNLIMITED)
 
 val decoder = NetCommandDecoder(channelNetworkIn)
 
-
+var bt = BT("Generator", channelNetworkIn, channelNetworkOut)
 

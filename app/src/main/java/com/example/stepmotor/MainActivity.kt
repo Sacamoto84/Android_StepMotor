@@ -1,28 +1,21 @@
 package com.example.stepmotor
 
 import android.Manifest
-import android.app.Activity
-import android.bluetooth.BluetoothAdapter
-import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
-import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import com.example.stepmotor.bt.ButtonBluetooth
+import com.example.stepmotor.bt.bt
 import com.example.stepmotor.screen.home.Home
 import com.example.stepmotor.ui.theme.StepMotorwTheme
 import com.google.accompanist.navigation.animation.AnimatedNavHost
@@ -31,7 +24,6 @@ import com.google.accompanist.navigation.animation.rememberAnimatedNavController
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import libs.KeepScreenOn
-import timber.log.Timber
 
 
 class MainActivity : ComponentActivity() {
@@ -39,13 +31,9 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-
-
         if (!isInitialized)
             Initialization(applicationContext)
         isInitialized = true
-
-
 
         setContent {
 
@@ -75,7 +63,8 @@ class MainActivity : ComponentActivity() {
 
                 if (bluetoothPermissions.allPermissionsGranted) {
                     bt.btIsReady
-                    if (bt.bluetoothAdapter.isEnabled) {
+                    if (bt.bluetoothAdapter.isEnabled)
+                    {
 
                         Surface(
                             modifier = Modifier.fillMaxSize(),
@@ -85,9 +74,8 @@ class MainActivity : ComponentActivity() {
                         }
 
                     } else {
-
+                        //Экран включения блютус
                         ButtonBluetooth()
-
                     }
                 }
 
@@ -96,42 +84,6 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-@Composable
-private fun ButtonBluetooth() {
-    val enableBluetoothContract = rememberLauncherForActivityResult(
-        ActivityResultContracts.StartActivityForResult()
-    ) {
-
-        bt.btIsReady = if (it.resultCode == Activity.RESULT_OK) {
-            Timber.w("bluetoothLauncher Success")
-            true
-            //bluetoothPrint.print()
-        } else {
-            Timber.w("bluetoothLauncher Failed")
-            false
-        }
-
-    }
-
-    // This intent will open the enable bluetooth dialog
-    val enableBluetoothIntent = Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)
-
-
-    Box(modifier = Modifier.fillMaxSize(), Alignment.Center)
-    {
-        Button(
-            onClick = {
-                if (!bt.bluetoothAdapter.isEnabled) {
-                    // Bluetooth is off, ask user to turn it on
-                    enableBluetoothContract.launch(enableBluetoothIntent)
-                }
-            }) {
-            Text(text = "Включить Bluetooth")
-        }
-    }
-
-
-}
 
 @OptIn(ExperimentalAnimationApi::class)
 @Composable

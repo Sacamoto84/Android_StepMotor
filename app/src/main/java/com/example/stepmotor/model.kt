@@ -34,7 +34,7 @@ data class shadowRegister(
 )
 
 @OptIn(DelicateCoroutinesApi::class)
-fun SyncRun() {
+fun syncRun() {
 
     GlobalScope.launch(Dispatchers.IO) {
         //channelNetworkOut.send("V $index $value")

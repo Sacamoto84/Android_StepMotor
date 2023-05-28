@@ -1,18 +1,15 @@
 package com.example.stepmotor.bt
 
-import android.Manifest
 import android.annotation.SuppressLint
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothSocket
 import android.content.Context
-import android.content.pm.PackageManager
 import android.os.Build
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
@@ -22,38 +19,35 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
 import java.util.UUID
 
+
 /**
  * Использование
  *
  * ```kotlin
  *  BT.init(context)
- *  BT.getPairedDevices()
- *  BT.autoconnect()
+ *  //BT.getPairedDevices()
+ *  BT.autoConnect()
  * ```
  */
 
+class BT(val name: String = "Generator", private val chIn: Channel<String>, private val chOut: Channel<String> ) {
 
-class BT {
-
-    lateinit var bluetoothManager: BluetoothManager
+    private lateinit var bluetoothManager: BluetoothManager
     lateinit var bluetoothAdapter: BluetoothAdapter
 
-    enum class BTstatus {
+    enum class Status {
         DISCONNECT, CONNECTING, CONNECTED
     }
 
-    //var btStatus by mutableStateOf(BTstatus.DISCONNECT)
+    var btStatus = MutableStateFlow(Status.DISCONNECT)
 
-    var btStatus = MutableStateFlow(BTstatus.DISCONNECT)
-
+    //Статус блютус модуля, включен или нет, для обновления компоса
     var btIsReady by mutableStateOf(false)
 
     private var stm32device: BluetoothDevice? = null
@@ -88,61 +82,53 @@ class BT {
         }
 
         try {
-            stm32device = pairedDevices.first { it.name == "Generator" }
+            stm32device = pairedDevices.first { it.name == name }
         } catch (e: NoSuchElementException) {
-            Timber.e("Блютус устройство 'Generator' не найдено")
+            Timber.e("Блютус устройство '$name' не найдено")
         }
 
     }
 
-    private fun connect(context: Context) {
+    private fun connect() {
 
         if (bluetoothAdapter.isEnabled and (stm32device != null)) {
-            btStatus.value = BTstatus.CONNECTING
-            val device = stm32device //bluetoothAdapter.getRemoteDevice(mac)
-            connectScope(context, device!!)
+            btStatus.value = Status.CONNECTING
+            //bluetoothAdapter.getRemoteDevice(mac)
+            connectScope(stm32device!!)
         }
     }
 
     @OptIn(DelicateCoroutinesApi::class)
-    fun autoconnect(context: Context) {
+    fun autoConnect() {
         GlobalScope.launch(Dispatchers.IO) {
             while (true) {
                 delay(1000)
-
-                if (btStatus.value == BTstatus.DISCONNECT) {
-                    connect(context)
+                if (btStatus.value == Status.DISCONNECT) {
+                    if(stm32device == null)
+                      getPairedDevices()
+                    connect()
                 }
-
             }
         }
     }
 
+    @SuppressLint("MissingPermission")
     @OptIn(DelicateCoroutinesApi::class)
-    fun connectScope(context: Context, device: BluetoothDevice) {
+    fun connectScope(device: BluetoothDevice) {
         GlobalScope.launch(Dispatchers.IO) {
-
-//            if (ActivityCompat.checkSelfPermission(
-//                    context,
-//                    Manifest.permission.BLUETOOTH_CONNECT
-//                ) == PackageManager.PERMISSION_GRANTED
-//            )
-//            {
 
             try {
                 mSocket = device.createRfcommSocketToServiceRecord(UUID.fromString(uuid))
                 Timber.i("Подключение...")
                 mSocket?.connect()
                 Timber.i("Подключились к устройству")
-                btStatus.value = BTstatus.CONNECTED
+                btStatus.value = Status.CONNECTED
                 sendReceiveScope()
             } catch (e: IOException) {
                 mSocket?.close()
                 Timber.e("Не смогли подключиться к устройсву ${e.message}")
-                btStatus.value = BTstatus.DISCONNECT
+                btStatus.value = Status.DISCONNECT
             }
-
-//            }
 
         }
     }
@@ -150,93 +136,50 @@ class BT {
     @OptIn(DelicateCoroutinesApi::class, ExperimentalCoroutinesApi::class)
     fun sendReceiveScope() {
 
-        //btStatus = BTstatus.RECEIVE
-
-        var inStream: InputStream? = null
-        var outStream: OutputStream? = null
+        val inStream: InputStream?
+        val outStream: OutputStream?
 
         try {
             inStream = mSocket?.inputStream
             outStream = mSocket?.outputStream
         } catch (e: IOException) {
             Timber.e("Ошибка создания inputStream")
+            return
         }
 
         val buf = inStream?.reader(Charsets.UTF_8)?.buffered(1024 * 1024 * 8)
 
         var isExit = false
 
-        //val mutex = Mutex()
-
-
         //Пинг
         GlobalScope.launch(Dispatchers.IO) {
-
             while (true) {
                 try {
-                    if (channelNetworkOut.isEmpty) {
+                    if (chOut.isEmpty) {
                         delay(1000)
-                        //mutex.lock()
                         outStream?.write(createMessage("ping").toByteArray())
                     }
                 } catch (e: IOException) {
                     isExit = true
-
-//                    try {
-//                        mutex.unlock()
-//                    } catch (e: Exception) {
-//                        Timber.e(e.localizedMessage)
-//                    }
-
                     break
                 }
-                //                finally {
-//
-//                    try {
-//                        mutex.unlock()
-//                    } catch (e: Exception) {
-//                        Timber.e(e.localizedMessage)
-//                    }
-//
-//                }
             }
-
         }
 
         //Отправка команд
         GlobalScope.launch(Dispatchers.IO) {
-
             while (true) {
-
                 try {
-                    val data = channelNetworkOut.receive()
-                    //mutex.lock()
+                    val data = chOut.receive()
                     outStream?.write(createMessage(data).toByteArray())
                 } catch (e: IOException) {
                     isExit = true
-//                    try {
-//                        mutex.unlock()
-//                    } catch (e: Exception) {
-//                        Timber.e(e.localizedMessage)
-//                    }
                     break
                 }
-                //finally {
-//                    try {
-//                        mutex.unlock()
-//                    } catch (e: Exception) {
-//                        Timber.e(e.localizedMessage)
-//                    }
-                //}
             }
-
         }
 
-
-
-
         GlobalScope.launch(Dispatchers.IO) {
-
             while (true) {
                 try {
                     if (isExit) throw IOException("Произошла ошибка ввода-вывода")
@@ -247,7 +190,7 @@ class BT {
                             s += buf.read().toChar()
                         }
                         if (s.isNotEmpty()) {
-                            channelNetworkIn.send(s)
+                            chIn.send(s)
                         }
                     } else {
                         Timber.e("buf == null")
@@ -256,21 +199,16 @@ class BT {
                 } catch (e: IOException) {
                     Timber.e("Ошибка в приемном потоке ${e.message}")
                     mSocket?.close()
+                    btStatus.value = Status.DISCONNECT
                     break  //При отключении подключения
                 }
             }
-
-            btStatus.value = BTstatus.DISCONNECT
-
         }
-
     }
-
 
     private fun createMessage(str: String): String {
         val crc = CRC8(str)
-        val s = "!${str};${crc}$"
-        return s
+        return "!${str};${crc}$"
     }
 
 }

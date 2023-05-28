@@ -1,14 +1,20 @@
 package com.example.stepmotor
 
+import android.Manifest
+import android.Manifest.permission.ACCESS_COARSE_LOCATION
+import android.Manifest.permission.BLUETOOTH_CONNECT
 import android.content.Context
+import android.content.pm.PackageManager
+import androidx.annotation.RequiresPermission
+import androidx.core.app.ActivityCompat
 import com.example.stepmotor.bt.BT
+import com.example.stepmotor.bt.bt
 import com.example.stepmotor.bt.decoder
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import timber.log.Timber
-import java.util.Date
 
 
 /**
@@ -23,8 +29,8 @@ class Initialization(context: Context) {
     init {
 
         bt.init(context)
-        bt.getPairedDevices()
-        bt.autoconnect(context)
+        //bt.getPairedDevices()
+        bt.autoConnect()
 
         decoder.run()
         decoder.addCmd("V")
@@ -66,12 +72,12 @@ class Initialization(context: Context) {
 
 
 
-        SyncRun()
+        syncRun()
 
         //Следим за тем чтобы при дисконекте снова прошла инициализация компос
         GlobalScope.launch(Dispatchers.IO) {
             bt.btStatus.collect {
-                if (it == BT.BTstatus.DISCONNECT)
+                if (it == BT.Status.DISCONNECT)
                 {
                     initCompose = false
                 }
