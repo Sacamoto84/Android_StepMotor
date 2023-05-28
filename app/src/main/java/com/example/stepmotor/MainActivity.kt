@@ -23,7 +23,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
 import com.example.stepmotor.screen.home.Home
 import com.example.stepmotor.ui.theme.StepMotorwTheme
 import com.google.accompanist.navigation.animation.AnimatedNavHost
