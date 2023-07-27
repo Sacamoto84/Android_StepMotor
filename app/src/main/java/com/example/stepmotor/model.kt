@@ -33,45 +33,12 @@ data class shadowRegister(
     //var timeInput: Date = Date(),  //Время когда была сделана отправка
 )
 
-@OptIn(DelicateCoroutinesApi::class)
-fun syncRun() {
 
-    GlobalScope.launch(Dispatchers.IO) {
-        //channelNetworkOut.send("V $index $value")
-
-        while (true) {
-            shadowList.forEachIndexed { i, value ->
-
-                //Первая отсылка
-                if (value.newOutputData) {
-                    if (value.outValue != value.inValue) {
-                        value.timeOutput = Date()
-                        send(i, value.outValue)
-                    }
-                    value.newOutputData = false
-                } else {
-                    //Условие того что данные не пришли в первый раз и шлем заново
-                    if ((value.outValue != value.inValue) and ((Date().time - value.timeOutput.time) > 500)) {
-                        value.newOutputData = true
-                    }
-                }
-
-
-            }
-        }
-    }
-
-}
 
 
 val shadowList = Array(8) { shadowRegister() }
 
-@OptIn(DelicateCoroutinesApi::class)
-private fun send(index: Int, value: Int) {
-    GlobalScope.launch(Dispatchers.IO) {
-        channelNetworkOut.send("V $index $value")
-    }
-}
+
 
 
 

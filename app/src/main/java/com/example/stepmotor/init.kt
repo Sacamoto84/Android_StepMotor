@@ -10,11 +10,13 @@ import androidx.core.app.ActivityCompat
 import com.example.stepmotor.bt.BT
 import com.example.stepmotor.bt.bt
 import com.example.stepmotor.bt.decoder
+import com.example.stepmotor.bt.send
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import timber.log.Timber
+import java.util.Date
 
 
 /**
@@ -68,10 +70,6 @@ class Initialization(context: Context) {
 
         }
 
-
-
-
-
         syncRun()
 
         //Следим за тем чтобы при дисконекте снова прошла инициализация компос
@@ -86,5 +84,34 @@ class Initialization(context: Context) {
 
     }
 
+
+}
+
+@OptIn(DelicateCoroutinesApi::class)
+private fun syncRun() {
+
+    GlobalScope.launch(Dispatchers.IO) {
+        //channelNetworkOut.send("V $index $value")
+
+        while (true) {
+            shadowList.forEachIndexed { i, value ->
+
+                //Первая отсылка
+                if (value.newOutputData) {
+                    if (value.outValue != value.inValue) {
+                        value.timeOutput = Date()
+                        send(i, value.outValue)
+                    }
+                    value.newOutputData = false
+                } else {
+                    //Условие того что данные не пришли в первый раз и шлем заново
+                    if ((value.outValue != value.inValue) and ((Date().time - value.timeOutput.time) > 500)) {
+                        value.newOutputData = true
+                    }
+                }
+
+            }
+        }
+    }
 
 }

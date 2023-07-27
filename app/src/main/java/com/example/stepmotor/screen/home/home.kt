@@ -40,12 +40,17 @@ fun Home()
        Text(text = "${bt.btStatus.collectAsState().value}")
        Text(text = "${counterInput.collectAsState().value}")
 
+
        Text(text = "Шагов на оборот ${settingSteps.collectAsState().value}")
+
        Text(text = "Микрошаг ${settingMicrostep.collectAsState().value}")
 
        Text(text = "Максимальная скорость ${settingMaxSpeed.collectAsState().value}")
+
        Text(text = "Ускорение ${settingAcceleration.collectAsState().value}")
+
        Text(text = "Позиция ${settingTarget.collectAsState().value}")
+
        Text(text = "Мотор достиг позиции ${settingReady.collectAsState().value}")
 
 
@@ -78,7 +83,7 @@ fun Home()
 
        }) {
 
-           Text(text = "Мотор ONOFF ${settingMotorOnOff.collectAsState().value}")
+           Text(text = "Мотор ON OFF ${settingMotorOnOff.collectAsState().value}")
 
        }
 
@@ -98,7 +103,7 @@ fun Home()
 
 @Preview
 @Composable
-fun HomePrewiew()
+fun HomePreview()
 {
     Home()
 }
